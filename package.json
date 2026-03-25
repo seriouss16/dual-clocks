@@ -1,0 +1,98 @@
+{
+    "name": "dual-clocks",
+    "displayName": "Dual Clocks",
+    "description": "Two live clocks in the status bar: local system time with adjustable offset + any timezone (UTC by default). Perfect for distributed teams.",
+    "version": "1.0.2",
+    "publisher": "seriouss16",
+    "icon": "icon.png",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/seriouss16/dual-clocks.git"
+    },
+    "homepage": "https://github.com/seriouss16/dual-clocks#readme",
+    "bugs": {
+        "url": "https://github.com/seriouss16/dual-clocks/issues"
+    },
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "keywords": [
+        "clock",
+        "timezone",
+        "utc",
+        "statusbar",
+        "time",
+        "dual clocks"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./extension.js",
+    "files": [
+        "extension.js",
+        "README.md",
+        "LICENSE.md",
+        "icon.png",
+        "screenshot/image_1.png",
+        "screenshot/image_2.png",
+        "screenshot/image_3.png"
+    ],
+    "contributes": {
+        "configuration": {
+            "title": "Dual Clocks",
+            "properties": {
+                "dualClocks.localOffsetHours": {
+                    "type": "number",
+                    "default": 0,
+                    "description": "Offset in hours for the local clock (supports negative and fractional values, e.g. 3.5 or -2)"
+                },
+                "dualClocks.secondTimezone": {
+                    "type": "string",
+                    "default": "UTC",
+                    "description": "IANA timezone name for the second clock"
+                },
+                "dualClocks.showSeconds": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show seconds in both clocks"
+                },
+                "dualClocks.padding": {
+                    "type": "number",
+                    "default": 10,
+                    "minimum": 0,
+                    "maximum": 40,
+                    "description": "Spaces around the separator between the two clocks"
+                },
+                "dualClocks.statusBarPlacement": {
+                    "type": "string",
+                    "enum": [
+                        "left",
+                        "center"
+                    ],
+                    "default": "left",
+                    "description": "\"left\" uses the left status bar (default). \"center\" places clocks on the inner edge of the right status bar (closest to the editor). Changing this may require reloading the window."
+                }
+            }
+        },
+        "commands": [
+            {
+                "command": "dualClocks.selectLocalOffset",
+                "title": "Dual Clocks: Set Local Time Offset"
+            },
+            {
+                "command": "dualClocks.selectSecondTimezone",
+                "title": "Dual Clocks: Select Second Timezone"
+            }
+        ]
+    },
+    "scripts": {
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@vscode/vsce": "^3.7.0"
+    }
+}
