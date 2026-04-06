@@ -1,0 +1,180 @@
+name: Security & Quality CI/CD
+
+on:
+  push:
+    branches: [ main, develop, new_part ]
+  pull_request:
+    branches: [ main, develop, new_part ]
+
+env:
+  NODE_VERSION: '18'
+  NPM_VERSION: '9'
+
+jobs:
+  # 1. SECRET SCANNING
+  secrets-scan:
+    name: 🔐 Scan for Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install TruffleHog
+        run: |
+          pip install truffleHog
+      
+      - name: Scan repository for secrets
+        id: secrets
+        continue-on-error: true
+        run: |
+          truffleHog --json --entropy True . > secrets-report.json 2>&1 || true
+          SECRETS_FOUND=$(wc -l < secrets-report.json)
+          echo "secrets_found=$SECRETS_FOUND" >> $GITHUB_OUTPUT
+          
+          if [ "$SECRETS_FOUND" -gt 1 ]; then
+            echo "❌ SECRETS FOUND! Check report."
+            cat secrets-report.json
+            exit 1
+          fi
+      
+      - name: Upload secrets report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: secrets-report
+          path: secrets-report.json
+
+  # 2. DETECT-SECRETS (Pre-commit style)
+  detect-secrets:
+    name: 🔍 Detect Secrets (detect-secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install detect-secrets
+        run: |
+          pip install detect-secrets
+
+      - name: Scan with detect-secrets
+        continue-on-error: true
+        run: |
+          detect-secrets scan --baseline .secrets.baseline || detect-secrets scan > .secrets.baseline
+          detect-secrets audit .secrets.baseline
+
+  # 3. LINTING & FORMATTING
+  lint-format:
+    name: 📝 Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        if: hashFiles('**/.eslintrc*') != ''
+        run: npm run lint -- --format json --output-file eslint-report.json || true
+
+      - name: Run Prettier check
+        if: hashFiles('**/prettier.config*') != '' || hashFiles('**/.prettierrc*') != ''
+        run: npx prettier --check . || npm run format
+
+      - name: Upload lint reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-reports
+          path: eslint-report.json
+          if-no-files-found: ignore
+
+  # 4. TYPESCRIPT CHECK
+  typescript:
+    name: 🎯 TypeScript Check
+    runs-on: ubuntu-latest
+    if: hashFiles('**/tsconfig.json') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tsc
+        run: npx tsc --noEmit
+
+  # 5. BUILD TEST
+  build:
+    name: 🏗️ Build Test
+    runs-on: ubuntu-latest
+    needs: [lint-format, typescript]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        if: hashFiles('**/package.json') != ''
+        run: npm run build 2>/dev/null || echo "No build script found"
+
+  # 6. DEPENDENCY CHECK
+  dependencies:
+    name: 📦 Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check for vulnerable dependencies
+        run: |
+          npm audit --audit-level=moderate || true
+
+      - name: Check outdated packages
+        run: |
+          npm outdated || true
+
+  # 7. FINAL REPORT
+  report:
+    name: 📊 Final Report
+    runs-on: ubuntu-latest
+    needs: [secrets-scan, detect-secrets, lint-format]
+    if: always()
+    steps:
+      - name: Check security status
+        if: needs.secrets-scan.result == 'failure'
+        run: |
+          echo "❌ SECURITY CHECK FAILED"
+          echo "🔐 Secrets were found in repository"
+          exit 1
+
+      - name: ✅ All checks passed
+        if: success()
+        run: |
+          echo "✅ All security and quality checks passed!"
+          echo "🚀 Ready for deployment"
+

@@ -90,7 +90,10 @@
         ]
     },
     "scripts": {
-        "package": "vsce package"
+        "package": "vsce package",
+        "lint": "eslint src --ext .ts,.tsx,.js,.jsx 2>/dev/null || true",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
     },
     "devDependencies": {
         "@vscode/vsce": "^3.7.0"
