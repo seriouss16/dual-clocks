@@ -22,3 +22,25 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+# Lock files - dependency snapshots (can expose security issues)
+package-lock.json
+yarn.lock
+bun.lock
+pnpm-lock.yaml
+Cargo.lock
+composer.lock
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Security files
+*.pem
+*.key
+*.keystore
+*.jks
+*.p12
+*.pkcs12
+*.crt
+*.cer
